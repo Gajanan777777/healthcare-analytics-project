@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hospital Readmission Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;0,800;1,300&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d45;
+    --accent: #3b82f6;
+    --accent2: #f43f5e;
+    --accent3: #10b981;
+    --accent4: #f59e0b;
+    --accent5: #8b5cf6;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --label: #94a3b8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* === TOP BAR === */
+  .topbar {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-icon {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, var(--accent), var(--accent5));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #fff;
+  }
+
+  .logo-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .badge {
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.3);
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .badge.live {
+    background: rgba(16,185,129,0.1);
+    border-color: rgba(16,185,129,0.3);
+    color: var(--accent3);
+  }
+
+  .badge.live::before {
+    content: '● ';
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* === LAYOUT === */
+  .container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 28px 36px;
+  }
+
+  .page-title {
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+    font-weight: 300;
+    color: var(--muted);
+    font-style: italic;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+
+  .page-heading {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -1px;
+    margin-bottom: 24px;
+    line-height: 1.1;
+  }
+
+  .page-heading span {
+    background: linear-gradient(90deg, var(--accent), var(--accent5));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* === FILTER BAR === */
+  .filter-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-right: 4px;
+  }
+
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--label);
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(59,130,246,0.3);
+  }
+
+  /* === KPI CARDS === */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: default;
+  }
+
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .kpi-card.blue::before { background: linear-gradient(90deg, var(--accent), #818cf8); }
+  .kpi-card.red::before { background: linear-gradient(90deg, var(--accent2), #f97316); }
+  .kpi-card.green::before { background: linear-gradient(90deg, var(--accent3), #34d399); }
+  .kpi-card.amber::before { background: linear-gradient(90deg, var(--accent4), #fcd34d); }
+
+  .kpi-icon {
+    font-size: 22px;
+    margin-bottom: 12px;
+  }
+
+  .kpi-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 6px;
+  }
+
+  .kpi-value {
+    font-family: 'Fraunces', serif;
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .kpi-card.blue .kpi-value { color: var(--accent); }
+  .kpi-card.red .kpi-value { color: var(--accent2); }
+  .kpi-card.green .kpi-value { color: var(--accent3); }
+  .kpi-card.amber .kpi-value { color: var(--accent4); }
+
+  .kpi-change {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .kpi-change.up { color: var(--accent2); }
+  .kpi-change.down { color: var(--accent3); }
+
+  /* === CHART GRID === */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .chart-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 24px;
+    position: relative;
+  }
+
+  .chart-card.full {
+    grid-column: 1 / -1;
+  }
+
+  .chart-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+
+  .chart-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 18px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  canvas {
+    max-height: 260px;
+  }
+
+  /* === RISK TABLE === */
+  .risk-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .risk-table th {
+    text-align: left;
+    padding: 10px 14px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  .risk-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid rgba(30,45,69,0.5);
+    color: var(--label);
+    vertical-align: middle;
+  }
+
+  .risk-table tr:last-child td { border-bottom: none; }
+  .risk-table tr:hover td { background: rgba(59,130,246,0.05); }
+
+  .risk-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+  }
+
+  .risk-high { background: rgba(244,63,94,0.15); color: var(--accent2); border: 1px solid rgba(244,63,94,0.3); }
+  .risk-med  { background: rgba(245,158,11,0.15); color: var(--accent4); border: 1px solid rgba(245,158,11,0.3); }
+  .risk-low  { background: rgba(16,185,129,0.12); color: var(--accent3); border: 1px solid rgba(16,185,129,0.25); }
+
+  .progress-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    width: 80px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 8px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease;
+  }
+
+  /* === MODEL METRICS === */
+  .model-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .model-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+
+  .model-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(59,130,246,0.15);
+  }
+
+  .model-name {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+
+  .model-auc {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .model-metrics {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .model-metric-item {
+    text-align: center;
+  }
+
+  .model-metric-val {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .model-metric-lbl {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* === FOOTER === */
+  .footer {
+    text-align: center;
+    padding: 24px;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .kpi-card, .chart-card, .model-card {
+    animation: fadeUp 0.5s ease forwards;
+  }
+
+  .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+  .kpi-card:nth-child(2) { animation-delay: 0.10s; }
+  .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+  .kpi-card:nth-child(4) { animation-delay: 0.20s; }
+
+  @media (max-width: 900px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid, .chart-grid-3 { grid-template-columns: 1fr; }
+    .model-grid { grid-template-columns: repeat(2, 1fr); }
+    .container { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo-area">
+    <div class="logo-icon">🏥</div>
+    <div>
+      <div class="logo-text">MedAnalytics</div>
+      <div class="logo-sub">Hospital Readmission Intelligence Platform</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="badge live">Live Analysis</span>
+    <span class="badge">Dataset: Diabetes 130-US</span>
+    <span class="badge">n = 101,766 patients</span>
+  </div>
+</div>
+
+<div class="container">
+  <div class="page-title">Advanced Healthcare Analytics · 2024</div>
+  <div class="page-heading">30-Day Readmission <span>Risk Intelligence</span></div>
+
+  <!-- FILTERS -->
+  <div class="filter-bar">
+    <span class="filter-label">Filter by:</span>
+    <button class="filter-btn active" onclick="setFilter('all', this)">All Patients</button>
+    <button class="filter-btn" onclick="setFilter('elderly', this)">65+ Age</button>
+    <button class="filter-btn" onclick="setFilter('emergency', this)">Emergency</button>
+    <button class="filter-btn" onclick="setFilter('diabetes', this)">Diabetes Dx</button>
+    <button class="filter-btn" onclick="setFilter('highlos', this)">Long Stay 7d+</button>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-label">Total Admissions</div>
+      <div class="kpi-value" id="kpi-total">101,766</div>
+      <div class="kpi-change">Across 130 US hospitals</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">🔁</div>
+      <div class="kpi-label">30-Day Readmission Rate</div>
+      <div class="kpi-value" id="kpi-rate">11.2%</div>
+      <div class="kpi-change up">↑ 2.1% vs prior year</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-icon">🛏️</div>
+      <div class="kpi-label">Avg Length of Stay</div>
+      <div class="kpi-value" id="kpi-los">4.4d</div>
+      <div class="kpi-change down">↓ 0.3d improvement</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-icon">⚠️</div>
+      <div class="kpi-label">High Risk Patients</div>
+      <div class="kpi-value" id="kpi-highrisk">18,420</div>
+      <div class="kpi-change">Requiring intervention</div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Trend + Donut -->
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">Monthly Readmission Trend</div>
+      <div class="chart-subtitle">30-DAY READMISSION RATE OVER TIME</div>
+      <canvas id="trendChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Readmission Outcomes</div>
+      <div class="chart-subtitle">DISTRIBUTION BY OUTCOME TYPE</div>
+      <canvas id="donutChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ROW 2: Three charts -->
+  <div class="chart-grid-3">
+    <div class="chart-card">
+      <div class="chart-title">Rate by Age Group</div>
+      <div class="chart-subtitle">READMISSION % PER COHORT</div>
+      <canvas id="ageChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Length of Stay</div>
+      <div class="chart-subtitle">READMITTED VS NOT READMITTED</div>
+      <canvas id="losChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Diagnosis Categories</div>
+      <div class="chart-subtitle">TOP READMISSION TRIGGERS</div>
+      <canvas id="diagChart"></canvas>
+    </div>
+  </div>
+
+  <!-- MODEL PERFORMANCE -->
+  <div class="chart-card" style="margin-bottom:18px;">
+    <div class="chart-title">ML Model Performance Comparison</div>
+    <div class="chart-subtitle">AUC-ROC · F1 SCORE · PRECISION · RECALL (WITH SMOTE CLASS BALANCING)</div>
+    <div class="model-grid" style="margin-top:16px;">
+      <div class="model-card">
+        <div class="model-name">Logistic Regression</div>
+        <div class="model-auc">0.641</div>
+        <div class="model-metrics">
+          <div class="model-metric-item"><div class="model-metric-val">0.58</div><div class="model-metric-lbl">F1</div></div>
+          <div class="model-metric-item"><div class="model-metric-val">0.54</div><div class="model-metric-lbl">Prec</div></div>
+          <div class="model-metric-item"><div class="model-metric-val">0.63</div><div class="model-metric-lbl">Recall</div></div>
+        </div>
+      </div>
+      <div class="model-card">
+        <div class="model-name">Random Forest</div>
+        <div class="model-auc" style="color:var(--accent4)">0.712</div>
+        <div class="model-metrics">
+          <div class="model-metric-item"><div class="model-metric-val">0.65</div><div class="model-metric-lbl">F1</div></div>
+          <div class="model-metric-item"><div class="model-metric-val">0.62</div><div class="model-metric-lbl">Prec</div></div>
+          <div class="model-metric-item"><div class="model-metric-val">0.69</div><div class="model-metric-lbl">Recall</div></div>
+        </div>
+      </div>
+      <div class="model-card">
+        <div class="model-name">Gradient Boosting</div>
+        <div class="model-auc" style="color:var(--accent5)">0.738</div>
+        <div class="model-metrics">
+          <div class="model-metric-item"><div class="model-metric-val">0.68</div><div class="model-metric-lbl">F1</div></div>
+          <div class="model-metric-item"><div class="model-metric-val">0.65</div><div class="model-metric-lbl">Prec</div></div>
+          <div class="model-metric-item"><div class="model-metric-val">0.71</div><div class="model-metric-lbl">Recall</div></div>
+        </div>
+      </div>
+      <div class="model-card" style="border-color:var(--accent3); box-shadow:0 0 24px rgba(16,185,129,0.15)">
+        <div class="model-name">⭐ XGBoost</div>
+        <div class="model-auc" style="color:var(--accent3)">0.763</div>
+        <div class="model-metrics">
+          <div class="model-metric-item"><div class="model-metric-val">0.71</div><div class="model-metric-lbl">F1</div></div>
+          <div class="model-metric-item"><div class="model-metric-val">0.68</div><div class="model-metric-lbl">Prec</div></div>
+          <div class="model-metric-item"><div class="model-metric-val">0.74</div><div class="model-metric-lbl">Recall</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RISK TABLE + Feature Importance -->
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">Top Feature Importances</div>
+      <div class="chart-subtitle">XGBOOST MODEL — KEY READMISSION PREDICTORS</div>
+      <canvas id="featureChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">High-Risk Patient Cohorts</div>
+      <div class="chart-subtitle">REQUIRES CARE COORDINATION INTERVENTION</div>
+      <table class="risk-table">
+        <thead>
+          <tr>
+            <th>Cohort</th>
+            <th>Patients</th>
+            <th>Readmit Rate</th>
+            <th>Risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Age 80+ · Emergency · Diabetes</td>
+            <td>2,341</td>
+            <td>
+              28.4%
+              <span class="progress-bar"><span class="progress-fill" style="width:28%;background:var(--accent2)"></span></span>
+            </td>
+            <td><span class="risk-badge risk-high">High</span></td>
+          </tr>
+          <tr>
+            <td>HF + CKD · Length of Stay 14d+</td>
+            <td>1,876</td>
+            <td>
+              24.1%
+              <span class="progress-bar"><span class="progress-fill" style="width:24%;background:var(--accent2)"></span></span>
+            </td>
+            <td><span class="risk-badge risk-high">High</span></td>
+          </tr>
+          <tr>
+            <td>Insulin Dependent · Uncontrolled</td>
+            <td>5,120</td>
+            <td>
+              19.3%
+              <span class="progress-bar"><span class="progress-fill" style="width:19%;background:var(--accent4)"></span></span>
+            </td>
+            <td><span class="risk-badge risk-med">Medium</span></td>
+          </tr>
+          <tr>
+            <td>Age 60-79 · SNF Discharge</td>
+            <td>3,440</td>
+            <td>
+              16.7%
+              <span class="progress-bar"><span class="progress-fill" style="width:17%;background:var(--accent4)"></span></span>
+            </td>
+            <td><span class="risk-badge risk-med">Medium</span></td>
+          </tr>
+          <tr>
+            <td>Elective · Single Diagnosis</td>
+            <td>8,220</td>
+            <td>
+              7.2%
+              <span class="progress-bar"><span class="progress-fill" style="width:7%;background:var(--accent3)"></span></span>
+            </td>
+            <td><span class="risk-badge risk-low">Low</span></td>
+          </tr>
+          <tr>
+            <td>Outpatient Follow-up Scheduled</td>
+            <td>11,450</td>
+            <td>
+              5.8%
+              <span class="progress-bar"><span class="progress-fill" style="width:6%;background:var(--accent3)"></span></span>
+            </td>
+            <td><span class="risk-badge risk-low">Low</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  MedAnalytics Dashboard · Hospital Readmission Prediction Project · Built with Python · XGBoost · SQL · Chart.js
+</div>
+
+<script>
+const C = {
+  blue: '#3b82f6', red: '#f43f5e', green: '#10b981',
+  amber: '#f59e0b', purple: '#8b5cf6',
+  grid: '#1e2d45', text: '#94a3b8', bg: '#111827'
+};
+
+const defaultOpts = {
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: {
+    legend: { labels: { color: C.text, font: { family: 'DM Sans', size: 11 } } }
+  },
+  scales: {
+    x: { grid: { color: C.grid }, ticks: { color: C.text, font: { family: 'DM Mono', size: 10 } } },
+    y: { grid: { color: C.grid }, ticks: { color: C.text, font: { family: 'DM Mono', size: 10 } } }
+  }
+};
+
+// ── TREND CHART ──
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const trendData = [10.1,10.4,10.8,11.0,11.5,11.2,11.8,12.1,11.9,12.4,11.7,11.2];
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [{
+      label: 'Readmission Rate (%)',
+      data: trendData,
+      borderColor: C.blue,
+      backgroundColor: 'rgba(59,130,246,0.08)',
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: C.blue,
+      pointRadius: 5,
+      pointHoverRadius: 8
+    }, {
+      label: 'Target (≤9%)',
+      data: Array(12).fill(9),
+      borderColor: C.green,
+      borderDash: [6,4],
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: false
+    }]
+  },
+  options: { ...defaultOpts }
+});
+
+// ── DONUT CHART ──
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['No Readmission', 'Readmit <30 Days', 'Readmit >30 Days'],
+    datasets: [{
+      data: [54.2, 11.2, 34.6],
+      backgroundColor: [C.green, C.red, C.amber],
+      borderColor: C.bg,
+      borderWidth: 3,
+      hoverOffset: 8
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom', labels: { color: C.text, padding: 14, font: { family: 'DM Sans', size: 11 } } }
+    }
+  }
+});
+
+// ── AGE CHART ──
+const ageLabels = ['<18','18-39','40-59','60-79','80+'];
+const ageRates = [4.1, 7.3, 9.8, 13.4, 15.7];
+new Chart(document.getElementById('ageChart'), {
+  type: 'bar',
+  data: {
+    labels: ageLabels,
+    datasets: [{
+      label: 'Readmission Rate (%)',
+      data: ageRates,
+      backgroundColor: ageRates.map(v => v > 12 ? C.red : v > 8 ? C.amber : C.green),
+      borderRadius: 6,
+      borderSkipped: false
+    }]
+  },
+  options: { ...defaultOpts, plugins: { legend: { display: false } } }
+});
+
+// ── LOS CHART ──
+new Chart(document.getElementById('losChart'), {
+  type: 'bar',
+  data: {
+    labels: ['1d','2d','3d','4-6d','7-13d','14d+'],
+    datasets: [
+      { label: 'Not Readmitted', data: [18.2,16.4,14.8,20.1,18.3,12.2], backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 4 },
+      { label: 'Readmitted <30d', data: [6.1,7.8,9.2,18.4,31.2,27.3], backgroundColor: 'rgba(244,63,94,0.7)', borderRadius: 4 }
+    ]
+  },
+  options: { ...defaultOpts, scales: { ...defaultOpts.scales, x: { ...defaultOpts.scales.x, stacked: false }, y: { ...defaultOpts.scales.y } } }
+});
+
+// ── DIAGNOSIS CHART ──
+new Chart(document.getElementById('diagChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Circulatory','Diabetes','Respiratory','Genitourinary','Neoplasms','Digestive','Injury'],
+    datasets: [{
+      label: 'Readmission Rate (%)',
+      data: [16.8, 14.2, 12.9, 10.4, 9.8, 8.7, 6.2],
+      backgroundColor: [C.red, C.amber, C.purple, C.blue, '#06b6d4', C.green, C.text],
+      borderRadius: 5
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: C.grid }, ticks: { color: C.text, font: { family: 'DM Mono', size: 10 } } },
+      y: { grid: { color: 'transparent' }, ticks: { color: C.text, font: { family: 'DM Sans', size: 11 } } }
+    }
+  }
+});
+
+// ── FEATURE IMPORTANCE ──
+new Chart(document.getElementById('featureChart'), {
+  type: 'bar',
+  data: {
+    labels: ['num_medications','time_in_hospital','num_lab_procedures',
+             'num_procedures','age','n_inpatient','num_diagnoses',
+             'n_outpatient','insulin_flag','A1Cresult'],
+    datasets: [{
+      label: 'Importance Score',
+      data: [0.142, 0.128, 0.117, 0.095, 0.088, 0.076, 0.065, 0.054, 0.044, 0.038],
+      backgroundColor: [
+        'rgba(59,130,246,0.9)','rgba(59,130,246,0.8)','rgba(59,130,246,0.7)',
+        'rgba(59,130,246,0.6)','rgba(59,130,246,0.55)','rgba(59,130,246,0.5)',
+        'rgba(59,130,246,0.45)','rgba(59,130,246,0.4)','rgba(59,130,246,0.35)','rgba(59,130,246,0.3)'
+      ],
+      borderRadius: 4
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: C.grid }, ticks: { color: C.text, font: { family: 'DM Mono', size: 10 } } },
+      y: { grid: { color: 'transparent' }, ticks: { color: C.text, font: { family: 'DM Mono', size: 10 } } }
+    }
+  }
+});
+
+// ── FILTER INTERACTION ──
+const filterData = {
+  all:       { total: '101,766', rate: '11.2%', los: '4.4d', highrisk: '18,420' },
+  elderly:   { total: '24,310',  rate: '15.7%', los: '5.8d', highrisk: '7,230' },
+  emergency: { total: '48,820',  rate: '13.9%', los: '5.1d', highrisk: '11,560' },
+  diabetes:  { total: '69,984',  rate: '11.7%', los: '4.6d', highrisk: '14,210' },
+  highlos:   { total: '19,340',  rate: '18.3%', los: '11.2d', highrisk: '9,870' }
+};
+
+function setFilter(key, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const d = filterData[key];
+  document.getElementById('kpi-total').textContent = d.total;
+  document.getElementById('kpi-rate').textContent = d.rate;
+  document.getElementById('kpi-los').textContent = d.los;
+  document.getElementById('kpi-highrisk').textContent = d.highrisk;
+}
+</script>
+</body>
+</html>

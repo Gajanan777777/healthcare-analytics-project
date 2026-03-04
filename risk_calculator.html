@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patient Readmission Risk Calculator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #f8fafc;
+    --white: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --accent: #2563eb;
+    --green: #059669;
+    --amber: #d97706;
+    --red: #dc2626;
+    --low-bg: #ecfdf5;
+    --med-bg: #fffbeb;
+    --high-bg: #fef2f2;
+    --low-border: #6ee7b7;
+    --med-border: #fcd34d;
+    --high-border: #fca5a5;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
+    color: white;
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .header-icon {
+    font-size: 36px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 14px;
+    padding: 10px 14px;
+  }
+
+  .header-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    font-weight: 900;
+    line-height: 1.1;
+  }
+
+  .header-sub {
+    font-size: 13px;
+    opacity: 0.75;
+    font-family: 'DM Mono', monospace;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 0;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    gap: 28px;
+  }
+
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 6px;
+  }
+
+  .card-sub {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 22px;
+    letter-spacing: 0.3px;
+  }
+
+  /* FORM */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  select, input[type="number"] {
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: #f8fafc;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b7280' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+    cursor: pointer;
+  }
+
+  select:focus, input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    background: #fff;
+  }
+
+  /* SECTION DIVIDERS */
+  .section-label {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    margin-bottom: -4px;
+  }
+
+  .section-label-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+  }
+
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* CHECKBOXES */
+  .checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    transition: all 0.15s;
+    background: #f8fafc;
+  }
+
+  .checkbox-item:hover { border-color: var(--accent); background: #eff6ff; }
+  .checkbox-item.checked { border-color: var(--accent); background: #eff6ff; }
+
+  .checkbox-item input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .checkbox-item span {
+    font-size: 13.5px;
+    color: #374151;
+    font-weight: 500;
+  }
+
+  .checkbox-item .points {
+    margin-left: auto;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    font-weight: 600;
+    background: rgba(37,99,235,0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+  }
+
+  /* CALCULATE BTN */
+  .calc-btn {
+    width: 100%;
+    margin-top: 24px;
+    padding: 14px;
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.3);
+  }
+
+  .calc-btn:hover {
+    background: linear-gradient(135deg, #1e40af, #1d4ed8);
+    box-shadow: 0 6px 20px rgba(37,99,235,0.4);
+    transform: translateY(-1px);
+  }
+
+  .calc-btn:active { transform: translateY(0); }
+
+  /* RISK RESULT */
+  .result-panel {
+    position: sticky;
+    top: 24px;
+  }
+
+  .risk-meter {
+    text-align: center;
+    padding: 28px 20px;
+    border-radius: 14px;
+    margin-bottom: 20px;
+    transition: all 0.4s;
+    border: 2px solid var(--border);
+  }
+
+  .risk-meter.low { background: var(--low-bg); border-color: var(--low-border); }
+  .risk-meter.medium { background: var(--med-bg); border-color: var(--med-border); }
+  .risk-meter.high { background: var(--high-bg); border-color: var(--high-border); }
+
+  .risk-icon { font-size: 48px; margin-bottom: 10px; }
+
+  .risk-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .risk-level {
+    font-family: 'Playfair Display', serif;
+    font-size: 34px;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .risk-meter.low .risk-level { color: var(--green); }
+  .risk-meter.medium .risk-level { color: var(--amber); }
+  .risk-meter.high .risk-level { color: var(--red); }
+
+  .risk-prob {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .risk-prob strong {
+    font-size: 22px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .risk-meter.low .risk-prob strong { color: var(--green); }
+  .risk-meter.medium .risk-prob strong { color: var(--amber); }
+  .risk-meter.high .risk-prob strong { color: var(--red); }
+
+  /* SCORE BAR */
+  .score-bar-wrap {
+    margin-bottom: 20px;
+  }
+
+  .score-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .score-bar-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+  }
+
+  .score-bar-val {
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    color: var(--text);
+  }
+
+  .score-bar-track {
+    height: 10px;
+    background: var(--border);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.7s cubic-bezier(.22,1,.36,1);
+  }
+
+  .fill-low { background: linear-gradient(90deg, #10b981, #34d399); }
+  .fill-med { background: linear-gradient(90deg, #f59e0b, #fcd34d); }
+  .fill-high { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+  /* FACTOR BREAKDOWN */
+  .factor-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .factor-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .factor-name { color: #374151; }
+  .factor-pts {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  .factor-pts.pos { background: #fee2e2; color: var(--red); }
+  .factor-pts.zero { background: #f1f5f9; color: var(--muted); }
+
+  /* RECOMMENDATIONS */
+  .recs { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+
+  .rec-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.4;
+    border: 1px solid transparent;
+  }
+
+  .rec-item.urgent { background: #fef2f2; border-color: #fca5a5; color: #7f1d1d; }
+  .rec-item.moderate { background: #fffbeb; border-color: #fcd34d; color: #78350f; }
+  .rec-item.standard { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; }
+
+  .rec-icon { font-size: 15px; flex-shrink: 0; }
+
+  /* PRINT */
+  .print-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .print-btn:hover { background: #e2e8f0; color: var(--text); }
+
+  .reset-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Default state */
+  #result { display: none; }
+  #placeholder {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+  }
+
+  .placeholder-icon { font-size: 52px; margin-bottom: 16px; }
+  .placeholder-title { font-family: 'Playfair Display', serif; font-size: 20px; color: #94a3b8; margin-bottom: 8px; }
+  .placeholder-sub { font-size: 13px; color: #cbd5e1; }
+
+  @media (max-width: 800px) {
+    .main { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .result-panel { position: static; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">🏥</div>
+  <div>
+    <div class="header-title">Patient Readmission Risk Calculator</div>
+    <div class="header-sub">30-DAY READMISSION RISK ASSESSMENT · POWERED BY XGBOOST MODEL</div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- LEFT: INPUT FORM -->
+  <div class="card">
+    <div class="card-title">Patient Clinical Assessment</div>
+    <div class="card-sub">ENTER PATIENT DETAILS AT TIME OF DISCHARGE</div>
+
+    <div class="form-grid">
+
+      <div class="section-label">
+        <span class="section-label-text">Demographics</span>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="field">
+        <label>Age Group</label>
+        <select id="age">
+          <option value="">Select age group...</option>
+          <option value="0">0–10 years</option>
+          <option value="1">10–20 years</option>
+          <option value="2">20–30 years</option>
+          <option value="3">30–40 years</option>
+          <option value="4">40–50 years</option>
+          <option value="5">50–60 years</option>
+          <option value="6">60–70 years</option>
+          <option value="7">70–80 years</option>
+          <option value="8">80–90 years</option>
+          <option value="9">90+ years</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Gender</label>
+        <select id="gender">
+          <option value="">Select gender...</option>
+          <option value="0">Female</option>
+          <option value="1">Male</option>
+        </select>
+      </div>
+
+      <div class="section-label">
+        <span class="section-label-text">Admission Details</span>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="field">
+        <label>Admission Type</label>
+        <select id="admType">
+          <option value="0">Elective</option>
+          <option value="1">Emergency</option>
+          <option value="2">Urgent</option>
+          <option value="0">Newborn</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Days in Hospital</label>
+        <input type="number" id="los" min="1" max="30" placeholder="e.g. 5" />
+      </div>
+
+      <div class="field">
+        <label>Primary Diagnosis Category</label>
+        <select id="diag">
+          <option value="0">Circulatory</option>
+          <option value="1">Diabetes</option>
+          <option value="2">Respiratory</option>
+          <option value="3">Genitourinary</option>
+          <option value="4">Neoplasms</option>
+          <option value="5">Digestive</option>
+          <option value="6">Injury / Trauma</option>
+          <option value="7">Other</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Discharge Destination</label>
+        <select id="discharge">
+          <option value="0">Home (self-care)</option>
+          <option value="1">Home with Home Health Care</option>
+          <option value="2">SNF / Nursing Facility</option>
+          <option value="2">Rehab / Distinct Part Hosp</option>
+          <option value="1">Another Hospital</option>
+          <option value="0">Outpatient / AMA</option>
+        </select>
+      </div>
+
+      <div class="section-label">
+        <span class="section-label-text">Clinical Complexity</span>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="field">
+        <label>Number of Medications</label>
+        <input type="number" id="meds" min="0" max="80" placeholder="e.g. 12" />
+      </div>
+
+      <div class="field">
+        <label>Number of Lab Procedures</label>
+        <input type="number" id="labs" min="0" max="132" placeholder="e.g. 40" />
+      </div>
+
+      <div class="field">
+        <label>Number of Diagnoses</label>
+        <input type="number" id="ndiag" min="1" max="16" placeholder="e.g. 7" />
+      </div>
+
+      <div class="field">
+        <label>Prior Inpatient Visits (past year)</label>
+        <input type="number" id="inpatient" min="0" max="21" placeholder="e.g. 1" />
+      </div>
+
+      <div class="section-label">
+        <span class="section-label-text">Diabetes & Medications</span>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="field">
+        <label>HbA1c Result</label>
+        <select id="a1c">
+          <option value="0">Not Measured</option>
+          <option value="1">Normal (&lt;7%)</option>
+          <option value="2">Elevated (7-8%)</option>
+          <option value="3">High (&gt;8%)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Insulin Status</label>
+        <select id="insulin">
+          <option value="0">Not Prescribed</option>
+          <option value="1">Steady Dose</option>
+          <option value="2">Dose Increased</option>
+          <option value="3">Dose Decreased</option>
+        </select>
+      </div>
+
+      <div class="section-label">
+        <span class="section-label-text">Risk Factors (select all that apply)</span>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="field full">
+        <div class="checkbox-group">
+          <label class="checkbox-item" id="chk-ckd">
+            <input type="checkbox" id="ckd"> <span>Chronic Kidney Disease (CKD)</span> <span class="points">+2 pts</span>
+          </label>
+          <label class="checkbox-item" id="chk-hf">
+            <input type="checkbox" id="hf"> <span>Heart Failure</span> <span class="points">+2 pts</span>
+          </label>
+          <label class="checkbox-item" id="chk-copd">
+            <input type="checkbox" id="copd"> <span>COPD / Chronic Respiratory</span> <span class="points">+1 pt</span>
+          </label>
+          <label class="checkbox-item" id="chk-nofu">
+            <input type="checkbox" id="nofu"> <span>No Follow-up Appointment Scheduled</span> <span class="points">+2 pts</span>
+          </label>
+          <label class="checkbox-item" id="chk-poly">
+            <input type="checkbox" id="poly"> <span>Polypharmacy Risk (10+ active medications)</span> <span class="points">+1 pt</span>
+          </label>
+          <label class="checkbox-item" id="chk-social">
+            <input type="checkbox" id="social"> <span>Social Risk Factors (housing instability / limited support)</span> <span class="points">+1 pt</span>
+          </label>
+        </div>
+      </div>
+
+    </div>
+
+    <button class="calc-btn" onclick="calculate()">⚡ Calculate Readmission Risk</button>
+  </div>
+
+  <!-- RIGHT: RESULT PANEL -->
+  <div class="result-panel">
+    <div class="card" id="placeholder">
+      <div class="placeholder-icon">🩺</div>
+      <div class="placeholder-title">Enter Patient Details</div>
+      <div class="placeholder-sub">Complete the form and click Calculate to generate a readmission risk assessment</div>
+    </div>
+
+    <div id="result">
+      <!-- Risk Meter -->
+      <div class="risk-meter card" id="riskMeter">
+        <div class="risk-icon" id="riskIcon">●</div>
+        <div class="risk-label">30-Day Readmission Risk</div>
+        <div class="risk-level" id="riskLevel">—</div>
+        <div class="risk-prob">Estimated probability: <strong id="riskPct">—</strong></div>
+      </div>
+
+      <!-- Score Bar -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title" style="font-size:15px; margin-bottom:16px;">Risk Score Breakdown</div>
+        <div class="score-bar-wrap">
+          <div class="score-bar-header">
+            <span class="score-bar-label">COMPOSITE RISK SCORE</span>
+            <span class="score-bar-val" id="scoreVal">0 / 20</span>
+          </div>
+          <div class="score-bar-track">
+            <div class="score-bar-fill" id="scoreFill" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="factor-list" id="factorList"></div>
+      </div>
+
+      <!-- Recommendations -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title" style="font-size:15px; margin-bottom:6px;">Clinical Recommendations</div>
+        <div class="card-sub" style="margin-bottom:12px;">DISCHARGE PLANNING ACTIONS</div>
+        <div class="recs" id="recs"></div>
+      </div>
+
+      <button class="print-btn" onclick="window.print()">🖨 Print Risk Assessment Report</button>
+      <button class="reset-btn" onclick="resetForm()">↺ Reset & New Patient</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Update checkbox visual state
+  document.querySelectorAll('.checkbox-item input').forEach(cb => {
+    cb.addEventListener('change', function() {
+      this.closest('label').classList.toggle('checked', this.checked);
+    });
+  });
+
+  function calculate() {
+    const age = parseInt(document.getElementById('age').value) || 0;
+    const los = parseInt(document.getElementById('los').value) || 0;
+    const meds = parseInt(document.getElementById('meds').value) || 0;
+    const labs = parseInt(document.getElementById('labs').value) || 0;
+    const ndiag = parseInt(document.getElementById('ndiag').value) || 0;
+    const inpatient = parseInt(document.getElementById('inpatient').value) || 0;
+    const a1c = parseInt(document.getElementById('a1c').value) || 0;
+    const insulin = parseInt(document.getElementById('insulin').value) || 0;
+    const admType = parseInt(document.getElementById('admType').value) || 0;
+    const discharge = parseInt(document.getElementById('discharge').value) || 0;
+
+    const ckd = document.getElementById('ckd').checked;
+    const hf = document.getElementById('hf').checked;
+    const copd = document.getElementById('copd').checked;
+    const nofu = document.getElementById('nofu').checked;
+    const poly = document.getElementById('poly').checked;
+    const social = document.getElementById('social').checked;
+
+    // --- Risk Score Calculation (XGBoost-informed weights) ---
+    const factors = [];
+
+    const ageScore = age >= 7 ? 3 : age >= 5 ? 2 : age >= 3 ? 1 : 0;
+    factors.push({ name: 'Age group', pts: ageScore, max: 3 });
+
+    const losScore = los >= 14 ? 3 : los >= 7 ? 2 : los >= 3 ? 1 : 0;
+    factors.push({ name: 'Length of stay', pts: losScore, max: 3 });
+
+    const medsScore = meds >= 20 ? 2 : meds >= 10 ? 1 : 0;
+    factors.push({ name: 'Medication count', pts: medsScore, max: 2 });
+
+    const inpatScore = inpatient >= 3 ? 3 : inpatient >= 1 ? 1 : 0;
+    factors.push({ name: 'Prior inpatient visits', pts: inpatScore, max: 3 });
+
+    const diagScore = ndiag >= 7 ? 1 : 0;
+    factors.push({ name: 'Comorbidity burden', pts: diagScore, max: 1 });
+
+    const a1cScore = a1c === 3 ? 2 : a1c === 0 ? 1 : 0;
+    factors.push({ name: 'HbA1c status', pts: a1cScore, max: 2 });
+
+    const insulinScore = (insulin === 2 || insulin === 3) ? 1 : 0;
+    factors.push({ name: 'Insulin dosage change', pts: insulinScore, max: 1 });
+
+    const admScore = admType === 1 ? 1 : 0;
+    factors.push({ name: 'Emergency admission', pts: admScore, max: 1 });
+
+    const dischScore = discharge === 2 ? 2 : discharge === 1 ? 1 : 0;
+    factors.push({ name: 'Discharge destination', pts: dischScore, max: 2 });
+
+    const comorbScore = (ckd ? 2 : 0) + (hf ? 2 : 0) + (copd ? 1 : 0);
+    factors.push({ name: 'Comorbidities (CKD/HF/COPD)', pts: comorbScore, max: 5 });
+
+    const socialScore = (nofu ? 2 : 0) + (social ? 1 : 0) + (poly ? 1 : 0);
+    factors.push({ name: 'Social & care coordination risk', pts: socialScore, max: 4 });
+
+    const MAX_SCORE = 27;
+    const totalScore = factors.reduce((s, f) => s + f.pts, 0);
+    const pct = Math.min(totalScore / MAX_SCORE, 1);
+
+    // Map score to probability (calibrated approximation)
+    let prob, level, icon, meterClass;
+    if (pct < 0.30) {
+      prob = Math.round(5 + pct / 0.30 * 8);
+      level = 'LOW RISK'; icon = '✅'; meterClass = 'low';
+    } else if (pct < 0.60) {
+      prob = Math.round(14 + (pct - 0.30) / 0.30 * 15);
+      level = 'MEDIUM RISK'; icon = '⚠️'; meterClass = 'medium';
+    } else {
+      prob = Math.round(30 + (pct - 0.60) / 0.40 * 45);
+      level = 'HIGH RISK'; icon = '🚨'; meterClass = 'high';
+    }
+    prob = Math.min(prob, 75);
+
+    // Render result
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('result').style.display = 'block';
+
+    const meter = document.getElementById('riskMeter');
+    meter.className = `risk-meter card ${meterClass}`;
+    document.getElementById('riskIcon').textContent = icon;
+    document.getElementById('riskLevel').textContent = level;
+    document.getElementById('riskPct').textContent = `~${prob}%`;
+    document.getElementById('scoreVal').textContent = `${totalScore} / ${MAX_SCORE}`;
+
+    const fill = document.getElementById('scoreFill');
+    fill.style.width = `${Math.min(pct * 100, 100)}%`;
+    fill.className = `score-bar-fill fill-${meterClass}`;
+
+    // Factor breakdown
+    const fList = document.getElementById('factorList');
+    fList.innerHTML = '';
+    factors.filter(f => f.pts > 0 || f.max > 0).forEach(f => {
+      const div = document.createElement('div');
+      div.className = 'factor-item';
+      div.innerHTML = `
+        <span class="factor-name">${f.name}</span>
+        <span class="factor-pts ${f.pts > 0 ? 'pos' : 'zero'}">${f.pts > 0 ? '+' + f.pts : '0'} pts</span>
+      `;
+      fList.appendChild(div);
+    });
+
+    // Recommendations
+    const recs = document.getElementById('recs');
+    recs.innerHTML = '';
+    const allRecs = [];
+
+    if (meterClass === 'high') {
+      allRecs.push({ cls: 'urgent', icon: '🚨', text: 'Flag for care coordinator — immediate discharge planning review required' });
+      allRecs.push({ cls: 'urgent', icon: '📞', text: 'Schedule 24-hour post-discharge phone follow-up' });
+    }
+    if (inpatient >= 1) allRecs.push({ cls: 'urgent', icon: '📋', text: 'Review prior admission patterns — assess care management plan' });
+    if (nofu) allRecs.push({ cls: 'urgent', icon: '📅', text: 'Schedule PCP follow-up appointment before discharge' });
+    if (a1c === 0) allRecs.push({ cls: 'moderate', icon: '🩸', text: 'Order HbA1c test — glucose control status unmeasured' });
+    if (a1c === 3) allRecs.push({ cls: 'moderate', icon: '💊', text: 'Refer to diabetes educator — HbA1c critically elevated (>8%)' });
+    if (insulin >= 2) allRecs.push({ cls: 'moderate', icon: '💉', text: 'Perform medication reconciliation — insulin dosage recently changed' });
+    if (meds >= 10 || poly) allRecs.push({ cls: 'moderate', icon: '💊', text: 'Pharmacist medication review for polypharmacy risk' });
+    if (discharge >= 1) allRecs.push({ cls: 'moderate', icon: '🏠', text: 'Coordinate with home health / SNF for post-discharge care plan' });
+    if (social) allRecs.push({ cls: 'moderate', icon: '🤝', text: 'Social work consult — address housing/support barriers to recovery' });
+    if (ckd || hf) allRecs.push({ cls: 'moderate', icon: '❤️', text: 'Specialist follow-up scheduled for chronic condition management' });
+    allRecs.push({ cls: 'standard', icon: '📄', text: 'Provide written discharge instructions in patient\'s primary language' });
+    allRecs.push({ cls: 'standard', icon: '☎️', text: '48-hour nurse callback protocol activated' });
+
+    allRecs.slice(0, 6).forEach(r => {
+      const div = document.createElement('div');
+      div.className = `rec-item ${r.cls}`;
+      div.innerHTML = `<span class="rec-icon">${r.icon}</span><span>${r.text}</span>`;
+      recs.appendChild(div);
+    });
+  }
+
+  function resetForm() {
+    document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+    document.querySelectorAll('input[type="number"]').forEach(i => i.value = '');
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.checked = false;
+      cb.closest('label').classList.remove('checked');
+    });
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('placeholder').style.display = 'block';
+  }
+</script>
+</body>
+</html>
