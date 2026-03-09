@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D2C Electronics — Sales & Revenue Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f1f5f9;
+  --white: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  --label: #475569;
+  --navy: #0f4c81;
+  --red: #e63946;
+  --teal: #2a9d8f;
+  --amber: #f4a261;
+  --yellow: #e9c46a;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Outfit',sans-serif; background:var(--bg); color:var(--text); }
+
+/* TOPBAR */
+.topbar {
+  background: var(--white);
+  border-bottom: 2px solid var(--border);
+  padding: 14px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.brand { display:flex; align-items:center; gap:14px; }
+
+.brand-logo {
+  width: 42px; height: 42px;
+  background: linear-gradient(135deg, var(--navy), #1a6fad);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 3px 10px rgba(15,76,129,0.25);
+}
+
+.brand-name {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 20px; font-weight: 700;
+  color: var(--navy);
+}
+
+.brand-sub {
+  font-size: 11px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.5px;
+}
+
+.topbar-right { display:flex; gap:10px; align-items:center; }
+
+.tbadge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.tbadge.blue { background:#eff6ff; border:1px solid #bfdbfe; color:var(--navy); }
+.tbadge.green { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
+.tbadge.red { background:#fff1f2; border:1px solid #fecdd3; color:#9f1239; }
+
+/* LAYOUT */
+.container { max-width:1440px; margin:0 auto; padding:28px 36px; }
+
+.page-header { margin-bottom:20px; }
+.page-eye {
+  font-family:'JetBrains Mono',monospace; font-size:11px;
+  color:var(--navy); letter-spacing:2px; text-transform:uppercase; margin-bottom:4px;
+}
+.page-title {
+  font-family:'Libre Baskerville',serif; font-size:28px;
+  font-weight:700; color:var(--text); letter-spacing:-0.5px;
+}
+.page-title span { color:var(--red); }
+
+/* FILTER BAR */
+.filter-bar {
+  display:flex; gap:8px; margin-bottom:22px; flex-wrap:wrap;
+  align-items:center; background:var(--white);
+  padding:12px 18px; border-radius:12px;
+  border:1px solid var(--border); box-shadow:var(--shadow);
+}
+
+.fl { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-right:4px; }
+
+.fbtn {
+  background:var(--bg); border:1px solid var(--border);
+  color:var(--label); padding:6px 14px; border-radius:7px;
+  font-size:12px; font-family:'Outfit',sans-serif; cursor:pointer; transition:all 0.2s;
+}
+.fbtn:hover,.fbtn.active { background:var(--navy); border-color:var(--navy); color:#fff; font-weight:600; }
+
+/* KPI */
+.kpi-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:20px; }
+
+.kpi {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:14px; padding:20px 22px;
+  box-shadow:var(--shadow); transition:all 0.2s;
+  position:relative; overflow:hidden;
+}
+
+.kpi:hover { transform:translateY(-2px); box-shadow:0 6px 24px rgba(0,0,0,0.1); }
+
+.kpi::before {
+  content:''; position:absolute;
+  top:0; left:0; right:0; height:4px;
+  border-radius:14px 14px 0 0;
+}
+
+.kpi.n::before { background:linear-gradient(90deg,var(--navy),#2980b9); }
+.kpi.r::before { background:linear-gradient(90deg,var(--red),#ff6b6b); }
+.kpi.t::before { background:linear-gradient(90deg,var(--teal),#38b2ac); }
+.kpi.a::before { background:linear-gradient(90deg,var(--amber),#fbd38d); }
+.kpi.y::before { background:linear-gradient(90deg,var(--yellow),#f6e05e); }
+
+.kpi-icon { font-size:22px; margin-bottom:10px; }
+.kpi-lbl { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1.2px; margin-bottom:4px; }
+.kpi-val { font-family:'Libre Baskerville',serif; font-size:30px; font-weight:700; line-height:1; margin-bottom:4px; }
+.kpi.n .kpi-val { color:var(--navy); }
+.kpi.r .kpi-val { color:var(--red); }
+.kpi.t .kpi-val { color:var(--teal); }
+.kpi.a .kpi-val { color:#c05621; }
+.kpi.y .kpi-val { color:#b7791f; }
+.kpi-change { font-size:11px; }
+.up { color:#16a34a; } .down { color:var(--red); }
+
+/* CHART GRIDS */
+.row2 { display:grid; grid-template-columns:1.6fr 1fr; gap:16px; margin-bottom:16px; }
+.row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
+.row2b { display:grid; grid-template-columns:1fr 1.2fr; gap:16px; margin-bottom:16px; }
+
+.chart-card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:14px; padding:22px 24px; box-shadow:var(--shadow);
+}
+
+.chart-card.full { grid-column:1/-1; }
+
+.cc-title { font-family:'Libre Baskerville',serif; font-size:15px; font-weight:700; color:var(--text); margin-bottom:3px; }
+.cc-sub { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted); margin-bottom:16px; letter-spacing:0.5px; }
+
+canvas { max-height:240px; }
+
+/* PRODUCT TABLE */
+.prod-table { width:100%; border-collapse:collapse; font-size:13px; }
+.prod-table th { text-align:left; padding:9px 12px; color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:1px; border-bottom:2px solid var(--border); }
+.prod-table td { padding:10px 12px; border-bottom:1px solid #f1f5f9; color:var(--label); vertical-align:middle; }
+.prod-table tr:hover td { background:#f8fafc; }
+.prod-table tr:last-child td { border-bottom:none; }
+
+.trend-pill { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-family:'JetBrains Mono',monospace; font-weight:600; }
+.trend-up { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+.trend-dn { background:#fff1f2; color:var(--red); border:1px solid #fecdd3; }
+.trend-fl { background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
+
+.bar-mini { display:inline-block; width:70px; height:6px; background:#e2e8f0; border-radius:3px; vertical-align:middle; margin-left:8px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:3px; }
+
+/* CHANNEL CARDS */
+.channel-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:4px; }
+.ch-card {
+  background:#f8fafc; border:1px solid var(--border);
+  border-radius:10px; padding:14px 16px; text-align:center; transition:all 0.2s; cursor:pointer;
+}
+.ch-card:hover { border-color:var(--navy); background:#eff6ff; }
+.ch-icon { font-size:26px; margin-bottom:6px; }
+.ch-name { font-size:12px; font-weight:600; color:var(--text); margin-bottom:4px; }
+.ch-rev { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--navy); }
+.ch-share { font-size:11px; color:var(--muted); }
+
+/* REGION TABLE */
+.region-table { width:100%; border-collapse:collapse; font-size:12px; }
+.region-table th { text-align:left; padding:8px 12px; background:#f8fafc; color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--border); }
+.region-table td { padding:9px 12px; border-bottom:1px solid #f1f5f9; color:var(--label); }
+.region-table tr:hover td { background:#f8fafc; }
+
+/* ANIMATIONS */
+@keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+.kpi { animation:fadeUp 0.4s ease forwards; }
+.kpi:nth-child(1){animation-delay:0.05s}
+.kpi:nth-child(2){animation-delay:0.10s}
+.kpi:nth-child(3){animation-delay:0.15s}
+.kpi:nth-child(4){animation-delay:0.20s}
+.kpi:nth-child(5){animation-delay:0.25s}
+
+@media(max-width:900px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .row2,.row3,.row2b{grid-template-columns:1fr}
+  .channel-grid{grid-template-columns:repeat(2,1fr)}
+  .container{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-logo">⚡</div>
+    <div>
+      <div class="brand-name">TechDirect India</div>
+      <div class="brand-sub">D2C Electronics · Sales & Revenue Intelligence</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="tbadge blue">FY 2024-25</span>
+    <span class="tbadge green">● Revenue: ₹48.2 Cr</span>
+    <span class="tbadge red">↑ 23.4% YoY Growth</span>
+  </div>
+</div>
+
+<div class="container">
+  <div class="page-header">
+    <div class="page-eye">Business Analytics · D2C Electronics · India</div>
+    <div class="page-title">Sales & Revenue <span>Performance Dashboard</span></div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filter-bar">
+    <span class="fl">Period:</span>
+    <button class="fbtn active" onclick="setPeriod('fy',this)">Full Year</button>
+    <button class="fbtn" onclick="setPeriod('q1',this)">Q1</button>
+    <button class="fbtn" onclick="setPeriod('q2',this)">Q2</button>
+    <button class="fbtn" onclick="setPeriod('q3',this)">Q3</button>
+    <button class="fbtn" onclick="setPeriod('q4',this)">Q4</button>
+    <span class="fl" style="margin-left:16px">Category:</span>
+    <button class="fbtn active" onclick="setCategory('all',this)">All Products</button>
+    <button class="fbtn" onclick="setCategory('mobile',this)">Mobiles</button>
+    <button class="fbtn" onclick="setCategory('audio',this)">Audio</button>
+    <button class="fbtn" onclick="setCategory('wearable',this)">Wearables</button>
+    <button class="fbtn" onclick="setCategory('laptop',this)">Laptops</button>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi n">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-lbl">Total Revenue</div>
+      <div class="kpi-val" id="k1">₹48.2Cr</div>
+      <div class="kpi-change up">↑ 23.4% vs last year</div>
+    </div>
+    <div class="kpi r">
+      <div class="kpi-icon">📦</div>
+      <div class="kpi-lbl">Total Orders</div>
+      <div class="kpi-val" id="k2">1,84,200</div>
+      <div class="kpi-change up">↑ 18.2% vs last year</div>
+    </div>
+    <div class="kpi t">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-lbl">Active Customers</div>
+      <div class="kpi-val" id="k3">92,400</div>
+      <div class="kpi-change up">↑ 31.5% new customers</div>
+    </div>
+    <div class="kpi a">
+      <div class="kpi-icon">🛒</div>
+      <div class="kpi-lbl">Avg Order Value</div>
+      <div class="kpi-val" id="k4">₹2,618</div>
+      <div class="kpi-change up">↑ ₹318 vs last year</div>
+    </div>
+    <div class="kpi y">
+      <div class="kpi-icon">🔄</div>
+      <div class="kpi-lbl">Return Rate</div>
+      <div class="kpi-val" id="k5">4.8%</div>
+      <div class="kpi-change down">↓ 1.2% improvement</div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Revenue Trend + Category Mix -->
+  <div class="row2">
+    <div class="chart-card">
+      <div class="cc-title">Monthly Revenue Trend — FY 2024-25</div>
+      <div class="cc-sub">REVENUE (₹ LAKHS) · ORDERS · TARGET VS ACTUAL</div>
+      <canvas id="revenueChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Revenue by Category</div>
+      <div class="cc-sub">% SHARE OF TOTAL REVENUE</div>
+      <canvas id="categoryDonut"></canvas>
+    </div>
+  </div>
+
+  <!-- SALES CHANNELS -->
+  <div class="chart-card" style="margin-bottom:16px;">
+    <div class="cc-title">Sales Channel Performance</div>
+    <div class="cc-sub">REVENUE BREAKDOWN BY D2C CHANNEL · FY 2024-25</div>
+    <div class="channel-grid">
+      <div class="ch-card">
+        <div class="ch-icon">🌐</div>
+        <div class="ch-name">Website (Direct)</div>
+        <div class="ch-rev">₹19.3 Cr</div>
+        <div class="ch-share">40% share · ↑28%</div>
+      </div>
+      <div class="ch-card">
+        <div class="ch-icon">📱</div>
+        <div class="ch-name">Mobile App</div>
+        <div class="ch-rev">₹14.5 Cr</div>
+        <div class="ch-share">30% share · ↑42%</div>
+      </div>
+      <div class="ch-card">
+        <div class="ch-icon">🛍️</div>
+        <div class="ch-name">Amazon / Flipkart</div>
+        <div class="ch-rev">₹9.6 Cr</div>
+        <div class="ch-share">20% share · ↑12%</div>
+      </div>
+      <div class="ch-card">
+        <div class="ch-icon">📲</div>
+        <div class="ch-name">Social Commerce</div>
+        <div class="ch-rev">₹4.8 Cr</div>
+        <div class="ch-share">10% share · ↑68%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Region + State wise -->
+  <div class="row2b">
+    <div class="chart-card">
+      <div class="cc-title">Revenue by Indian Region</div>
+      <div class="cc-sub">ZONE-WISE SALES PERFORMANCE</div>
+      <canvas id="regionChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Top 10 States by Revenue</div>
+      <div class="cc-sub">STATE-WISE SALES BREAKDOWN</div>
+      <table class="region-table">
+        <thead>
+          <tr>
+            <th>State</th>
+            <th>Revenue</th>
+            <th>Orders</th>
+            <th>Growth</th>
+          </tr>
+        </thead>
+        <tbody id="stateBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ROW 3: Three charts -->
+  <div class="row3">
+    <div class="chart-card">
+      <div class="cc-title">Quarterly Performance</div>
+      <div class="cc-sub">REVENUE VS TARGET (₹ CR)</div>
+      <canvas id="quarterChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Customer Acquisition</div>
+      <div class="cc-sub">NEW VS RETURNING CUSTOMERS</div>
+      <canvas id="customerChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Payment Methods</div>
+      <div class="cc-sub">TRANSACTION SPLIT</div>
+      <canvas id="paymentChart"></canvas>
+    </div>
+  </div>
+
+  <!-- PRODUCT TABLE -->
+  <div class="chart-card full">
+    <div class="cc-title">Top Products Performance</div>
+    <div class="cc-sub">REVENUE · UNITS SOLD · RETURN RATE · TREND</div>
+    <table class="prod-table" style="margin-top:12px;">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Category</th>
+          <th>Revenue</th>
+          <th>Units Sold</th>
+          <th>Avg Price</th>
+          <th>Return Rate</th>
+          <th>Revenue Share</th>
+          <th>Trend</th>
+        </tr>
+      </thead>
+      <tbody id="productBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const C = { navy:'#0f4c81', red:'#e63946', teal:'#2a9d8f', amber:'#f4a261', yellow:'#e9c46a', grid:'#f1f5f9', text:'#64748b', bg:'#ffffff' };
+const months = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+
+const opts = {
+  responsive:true, maintainAspectRatio:true,
+  plugins:{ legend:{ labels:{ color:C.text, font:{ family:'Outfit', size:11 }, padding:12 } } },
+  scales:{
+    x:{ grid:{ color:C.grid }, ticks:{ color:C.text, font:{ family:'JetBrains Mono', size:10 } } },
+    y:{ grid:{ color:C.grid }, ticks:{ color:C.text, font:{ family:'JetBrains Mono', size:10 } } }
+  }
+};
+
+// REVENUE TREND
+new Chart(document.getElementById('revenueChart'), {
+  type:'line',
+  data:{
+    labels: months,
+    datasets:[
+      { label:'Actual Revenue (₹L)', data:[280,310,295,380,420,510,490,445,520,580,620,670], borderColor:C.navy, backgroundColor:'rgba(15,76,129,0.07)', fill:true, tension:0.4, pointRadius:5, pointBackgroundColor:C.navy },
+      { label:'Target (₹L)', data:[300,320,310,360,400,480,470,430,500,560,600,650], borderColor:C.amber, borderDash:[6,4], borderWidth:2, pointRadius:0, fill:false },
+      { label:'Orders (00s)', data:[58,64,61,78,86,102,98,91,106,118,124,134], borderColor:C.teal, backgroundColor:'rgba(42,157,143,0.05)', fill:false, tension:0.4, pointRadius:4, yAxisID:'y1' }
+    ]
+  },
+  options:{
+    ...opts,
+    scales:{
+      x:{ grid:{ color:C.grid }, ticks:{ color:C.text, font:{ family:'JetBrains Mono', size:10 } } },
+      y:{ grid:{ color:C.grid }, ticks:{ color:C.text, font:{ family:'JetBrains Mono', size:10 }, callback: v => '₹'+v+'L' } },
+      y1:{ position:'right', grid:{ display:false }, ticks:{ color:C.teal, font:{ family:'JetBrains Mono', size:10 } } }
+    }
+  }
+});
+
+// CATEGORY DONUT
+new Chart(document.getElementById('categoryDonut'), {
+  type:'doughnut',
+  data:{
+    labels:['Mobiles','TWS/Earbuds','Smartwatches','Laptops','Accessories','Smart Home'],
+    datasets:[{ data:[38,22,18,12,6,4], backgroundColor:[C.navy,'#2980b9',C.teal,C.amber,C.yellow,C.red], borderColor:'#fff', borderWidth:3, hoverOffset:8 }]
+  },
+  options:{ responsive:true, maintainAspectRatio:true, cutout:'62%', plugins:{ legend:{ position:'bottom', labels:{ color:C.text, padding:10, font:{ family:'Outfit', size:11 } } } } }
+});
+
+// REGION CHART
+new Chart(document.getElementById('regionChart'), {
+  type:'bar',
+  data:{
+    labels:['North India','South India','West India','East India','Central','Northeast'],
+    datasets:[
+      { label:'Revenue (₹Cr)', data:[14.2,12.8,10.4,6.2,3.2,1.4], backgroundColor:[C.navy,'#2980b9',C.teal,C.amber,C.yellow,C.red], borderRadius:6 }
+    ]
+  },
+  options:{ ...opts, plugins:{ legend:{ display:false } } }
+});
+
+// QUARTERLY
+new Chart(document.getElementById('quarterChart'), {
+  type:'bar',
+  data:{
+    labels:['Q1 (Apr-Jun)','Q2 (Jul-Sep)','Q3 (Oct-Dec)','Q4 (Jan-Mar)'],
+    datasets:[
+      { label:'Actual (₹Cr)', data:[8.85,13.1,14.55,11.7], backgroundColor:'rgba(15,76,129,0.8)', borderRadius:6 },
+      { label:'Target (₹Cr)', data:[9.3,12.4,14.1,12.0], backgroundColor:'rgba(244,162,97,0.6)', borderRadius:6 }
+    ]
+  },
+  options:{ ...opts }
+});
+
+// CUSTOMER CHART
+new Chart(document.getElementById('customerChart'), {
+  type:'line',
+  data:{
+    labels: months,
+    datasets:[
+      { label:'New Customers', data:[4200,4800,4100,6200,7100,8400,7800,6900,8200,9400,10200,11800], borderColor:C.navy, backgroundColor:'rgba(15,76,129,0.08)', fill:true, tension:0.4, pointRadius:4 },
+      { label:'Returning', data:[2800,3100,2900,3800,4200,5100,4900,4400,5200,5900,6200,6700], borderColor:C.teal, backgroundColor:'rgba(42,157,143,0.06)', fill:true, tension:0.4, pointRadius:4 }
+    ]
+  },
+  options:{ ...opts }
+});
+
+// PAYMENT
+new Chart(document.getElementById('paymentChart'), {
+  type:'doughnut',
+  data:{
+    labels:['UPI','Credit Card','Debit Card','Net Banking','COD','EMI'],
+    datasets:[{ data:[42,22,14,8,6,8], backgroundColor:[C.teal,C.navy,C.amber,C.yellow,'#94a3b8',C.red], borderColor:'#fff', borderWidth:3, hoverOffset:6 }]
+  },
+  options:{ responsive:true, maintainAspectRatio:true, cutout:'58%', plugins:{ legend:{ position:'bottom', labels:{ color:C.text, padding:8, font:{ family:'Outfit', size:10 } } } } }
+});
+
+// STATE TABLE
+const states = [
+  { state:'Maharashtra', rev:'₹8.4 Cr', orders:'32,100', growth:'+28%', up:true },
+  { state:'Karnataka', rev:'₹6.2 Cr', orders:'23,800', growth:'+34%', up:true },
+  { state:'Delhi NCR', rev:'₹5.8 Cr', orders:'22,100', growth:'+22%', up:true },
+  { state:'Tamil Nadu', rev:'₹4.9 Cr', orders:'18,700', growth:'+19%', up:true },
+  { state:'Telangana', rev:'₹4.1 Cr', orders:'15,600', growth:'+31%', up:true },
+  { state:'Gujarat', rev:'₹3.8 Cr', orders:'14,500', growth:'+25%', up:true },
+  { state:'Rajasthan', rev:'₹2.9 Cr', orders:'11,100', growth:'+18%', up:true },
+  { state:'West Bengal', rev:'₹2.6 Cr', orders:'9,900', growth:'+14%', up:true },
+  { state:'Punjab', rev:'₹2.1 Cr', orders:'8,100', growth:'+21%', up:true },
+  { state:'Kerala', rev:'₹1.9 Cr', orders:'7,200', growth:'+29%', up:true },
+];
+
+const sb = document.getElementById('stateBody');
+states.forEach(s => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="font-weight:600;color:#0f172a">${s.state}</td>
+    <td style="font-family:'JetBrains Mono',monospace;color:${C.navy};font-weight:600">${s.rev}</td>
+    <td>${s.orders}</td>
+    <td><span class="trend-pill ${s.up?'trend-up':'trend-dn'}">${s.growth}</span></td>
+  `;
+  sb.appendChild(tr);
+});
+
+// PRODUCT TABLE
+const products = [
+  { name:'BoAt Airdopes 141', cat:'TWS Earbuds', rev:'₹4.2 Cr', units:'1,24,000', price:'₹339', ret:'3.2%', share:87, trend:'up' },
+  { name:'Noise ColorFit Pro 4', cat:'Smartwatch', rev:'₹3.8 Cr', units:'28,400', price:'₹1,338', ret:'4.1%', share:79, trend:'up' },
+  { name:'Redmi Note 13 Pro', cat:'Mobile', rev:'₹6.2 Cr', units:'21,800', price:'₹2,844', ret:'2.8%', share:95, trend:'up' },
+  { name:'boAt Rockerz 450', cat:'Headphones', rev:'₹2.1 Cr', units:'42,000', price:'₹500', ret:'5.2%', share:65, trend:'flat' },
+  { name:'Fire-Boltt Phoenix', cat:'Smartwatch', rev:'₹1.9 Cr', units:'14,200', price:'₹1,338', ret:'6.8%', share:58, trend:'down' },
+  { name:'Realme Buds T300', cat:'TWS Earbuds', rev:'₹1.6 Cr', units:'38,100', price:'₹420', ret:'3.9%', share:52, trend:'up' },
+  { name:'Mi Laptop 14"', cat:'Laptop', rev:'₹5.4 Cr', units:'8,900', price:'₹6,067', ret:'1.8%', share:88, trend:'up' },
+  { name:'Boat Bassheads 100', cat:'Wired Earphones', rev:'₹0.9 Cr', units:'52,000', price:'₹173', ret:'7.2%', share:38, trend:'down' },
+];
+
+const pb = document.getElementById('productBody');
+products.forEach(p => {
+  const trendCls = p.trend==='up'?'trend-up':p.trend==='down'?'trend-dn':'trend-fl';
+  const trendTxt = p.trend==='up'?'↑ Rising':p.trend==='down'?'↓ Falling':'→ Stable';
+  const fillColor = p.trend==='up'?C.teal:p.trend==='down'?C.red:C.amber;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="font-weight:600;color:#0f172a">${p.name}</td>
+    <td><span style="background:#f1f5f9;padding:2px 8px;border-radius:6px;font-size:11px">${p.cat}</span></td>
+    <td style="font-family:'JetBrains Mono',monospace;color:${C.navy};font-weight:600">${p.rev}</td>
+    <td>${p.units}</td>
+    <td style="font-family:'JetBrains Mono',monospace">${p.price}</td>
+    <td>${p.ret}</td>
+    <td>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px">${p.share}%</span>
+      <span class="bar-mini"><span class="bar-fill" style="width:${p.share}%;background:${fillColor}"></span></span>
+    </td>
+    <td><span class="trend-pill ${trendCls}">${trendTxt}</span></td>
+  `;
+  pb.appendChild(tr);
+});
+
+// FILTER FUNCTIONS
+const kpiData = {
+  fy: { k1:'₹48.2Cr', k2:'1,84,200', k3:'92,400', k4:'₹2,618', k5:'4.8%' },
+  q1: { k1:'₹8.85Cr', k2:'42,100', k3:'28,400', k4:'₹2,102', k5:'5.2%' },
+  q2: { k1:'₹13.1Cr', k2:'51,800', k3:'34,200', k4:'₹2,529', k5:'4.9%' },
+  q3: { k1:'₹14.55Cr', k2:'52,400', k3:'38,100', k4:'₹2,776', k5:'4.4%' },
+  q4: { k1:'₹11.7Cr', k2:'37,900', k3:'31,200', k4:'₹3,088', k5:'4.6%' },
+};
+
+function setPeriod(key, btn) {
+  document.querySelectorAll('.filter-bar .fbtn').forEach(b => { if(['Full Year','Q1','Q2','Q3','Q4'].some(t => b.textContent.includes(t))) b.classList.remove('active'); });
+  btn.classList.add('active');
+  const d = kpiData[key];
+  document.getElementById('k1').textContent = d.k1;
+  document.getElementById('k2').textContent = d.k2;
+  document.getElementById('k3').textContent = d.k3;
+  document.getElementById('k4').textContent = d.k4;
+  document.getElementById('k5').textContent = d.k5;
+}
+
+function setCategory(key, btn) {
+  document.querySelectorAll('.filter-bar .fbtn').forEach(b => { if(['All Products','Mobiles','Audio','Wearables','Laptops'].some(t => b.textContent===t)) b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
